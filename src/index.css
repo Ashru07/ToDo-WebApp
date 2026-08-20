@@ -34,4 +34,16 @@
   .input-field {
     @apply w-full px-4 py-3 rounded-lg border-2 border-slate-200 dark:border-slate-600 bg-white/80 dark:bg-slate-800/80 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all duration-200;
   }
+
+  .calendar-overlay::-webkit-calendar-picker-indicator {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    height: auto;
+    color: transparent;
+    background: transparent;
+  }
 }

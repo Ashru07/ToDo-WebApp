@@ -31,3 +31,12 @@ Thumbs.db
 
 # Misc
 *.log
+
+# Private Credentials
+serviceAccountKey.json
+db.json
+
+# Tunneling tools
+tunnel.txt
+pinggy.txt
+*.bat

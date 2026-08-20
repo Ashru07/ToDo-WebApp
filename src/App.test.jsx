@@ -19,7 +19,7 @@ describe('Todo App', () => {
 
   it('renders the todo dashboard header', () => {
     render(<App />)
-    expect(screen.getByText('Todo Dashboard')).toBeInTheDocument()
+    expect(screen.getByText('To Do')).toBeInTheDocument()
   })
 
   it('renders the add task form', () => {
