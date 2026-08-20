@@ -8,17 +8,10 @@ export function useAuth() {
 }
 
 
-// Dynamically determine the API URL
-const getApiUrl = () => {
-  if (Capacitor.isNativePlatform()) {
-    // For Android, use the current host IP (or 10.0.2.2 for emulator)
-    return 'http://192.168.1.113:3001/api';
-  }
-  // For web, use the current hostname to avoid IP changes breaking the app
-  return `http://${window.location.hostname}:3001/api`;
-};
+// Use the live Render backend URL for both web and Android
+export const API_URL = 'https://todo-webapp-ixo4.onrender.com/api';
 
-export const API_URL = getApiUrl();
+
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
