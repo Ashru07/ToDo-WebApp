@@ -8,7 +8,6 @@ export default function Register() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [gmailAppPassword, setGmailAppPassword] = useState('');
   const [error, setError] = useState('');
   const { register } = useAuth();
   const navigate = useNavigate();
@@ -20,7 +19,7 @@ export default function Register() {
     }
     try {
       setError('');
-      await register(email, password, name, gmailAppPassword);
+      await register(email, password, name);
       navigate('/dashboard');
     } catch (err) {
       setError(err.message);
@@ -97,19 +96,7 @@ export default function Register() {
               onChange={(e) => setConfirmPassword(e.target.value)}
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Gmail App Password
-            </label>
-            <input
-              type="password"
-              required
-              className="input-field"
-              placeholder="16-character app password"
-              value={gmailAppPassword}
-              onChange={(e) => setGmailAppPassword(e.target.value)}
-            />
-          </div>
+
           <button type="submit" className="btn-primary w-full mt-6 py-3 text-lg">
             Sign Up
           </button>

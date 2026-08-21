@@ -1,6 +1,6 @@
 {
   "appId": "com.todo.dashboard",
-  "appName": "todo-dashboard",
+  "appName": "To Do",
   "webDir": "dist",
   "plugins": {
     "LocalNotifications": {

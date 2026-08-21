@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth, API_URL } from '../../contexts/AuthContext';
 import { ArrowLeft, Plus, Bell } from 'lucide-react';
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, registerPlugin } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { messaging } from '../../firebase';
 import { getToken } from 'firebase/messaging';
@@ -13,6 +13,7 @@ const PRIORITIES = ['low', 'medium', 'high'];
 const CATEGORIES = ['personal', 'work', 'shopping', 'health', 'learning', 'other'];
 
 export default function AssignTask() {
+  const AlarmPlugin = registerPlugin('AlarmPlugin');
   const { currentUser } = useAuth();
   const navigate = useNavigate();
 
@@ -90,15 +91,10 @@ export default function AssignTask() {
           alarmDate.setHours(hours, minutes, 0, 0);
           const triggerDate = new Date(alarmDate.getTime() - (savedTodo.alarmOffset || 0) * 60000);
           
-          if (triggerDate > new Date()) {
-            await LocalNotifications.schedule({
-              notifications: [{
-                title: 'Todo Alarm!',
-                body: savedTodo.alarmMessage || `Reminder: ${savedTodo.text}`,
-                id: savedTodo.id % 2147483647,
-                schedule: { at: triggerDate },
-                sound: 'beep.wav'
-              }]
+          if (triggerDate > new Date() && setAlarm) {
+            await AlarmPlugin.setAlarm({ 
+              time: triggerDate.getTime(),
+              message: savedTodo.alarmMessage || `Reminder: ${savedTodo.text}`
             });
           }
         } catch (err) {

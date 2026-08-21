@@ -183,14 +183,64 @@ app.post('/api/email', async (req, res) => {
   }
 });
 
+app.post('/api/alarms/trigger', async (req, res) => {
+  try {
+    const { userId, todoId } = req.body;
+    const user = await User.findOne({ id: userId });
+    const todo = await Todo.findOne({ userId, id: todoId });
+
+    if (!user || !todo) return res.status(404).json({ error: 'Not found' });
+    if (todo.get('alarmTriggered')) return res.json({ success: true, message: 'Already triggered' });
+
+    // Mark as triggered in DB
+    await Todo.updateOne({ _id: todo._id }, { $set: { alarmTriggered: true } });
+
+    // Send email if configured
+    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+      // Use the dedicated server email account
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
+      });
+      await transporter.sendMail({
+        from: `"Todo App Notifications" <${process.env.EMAIL_USER}>`,
+        to: user.email,
+        subject: `Todo Alarm: ${todo.get('text')}`,
+        text: todo.get('alarmMessage') || `Hello, this is a reminder for your task: ${todo.get('text')}`,
+      });
+      console.log(`[API] Email successfully sent to ${user.email} from server account for task: ${todo.get('text')}`);
+    } else if (user.gmailAppPassword) {
+      // Fallback: Use the user's own account (will likely go to Sent folder)
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: { user: user.email, pass: user.gmailAppPassword },
+      });
+      await transporter.sendMail({
+        from: `"Todo App Notifications" <${user.email}>`,
+        to: user.email,
+        subject: `Todo Alarm: ${todo.get('text')}`,
+        text: todo.get('alarmMessage') || `Hello, this is a reminder for your task: ${todo.get('text')}`,
+      });
+      console.log(`[API] Email successfully sent to ${user.email} for task: ${todo.get('text')}`);
+    }
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[API] Error triggering alarm:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Cron Job for Offline Alarms
 setInterval(async () => {
   if (mongoose.connection.readyState !== 1) return; // Wait until connected
   
   try {
     const now = new Date();
-    // Find all users who have a gmail app password
-    const users = await User.find({ gmailAppPassword: { $exists: true, $ne: '' } });
+    // Find all users who have alarms (either they have a personal app pass, or the server has a global one)
+    const query = (process.env.EMAIL_USER && process.env.EMAIL_PASS) 
+      ? {} // Find all users
+      : { gmailAppPassword: { $exists: true, $ne: '' } }; // Only users with personal app passwords
+    const users = await User.find(query);
     
     for (const user of users) {
       // Find all active alarms for this user
@@ -220,18 +270,33 @@ setInterval(async () => {
             console.log(`[CRON] Alarm triggered for ${user.email} - Task: ${todo.get('text')}`);
             
             try {
-              const transporter = nodemailer.createTransport({
-                service: 'gmail',
-                auth: { user: user.email, pass: user.gmailAppPassword },
-              });
-
-              await transporter.sendMail({
-                from: `"Todo App" <${user.email}>`,
-                to: user.email,
-                subject: 'Todo Alarm!',
-                text: todo.get('alarmMessage') || `Hello, this is a reminder for your task: ${todo.get('text')}`,
-              });
-              console.log(`[CRON] Email successfully sent to ${user.email}`);
+              if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+                // Use the dedicated server email account
+                const transporter = nodemailer.createTransport({
+                  service: 'gmail',
+                  auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
+                });
+                await transporter.sendMail({
+                  from: `"Todo App Notifications" <${process.env.EMAIL_USER}>`,
+                  to: user.email,
+                  subject: `Todo Alarm: ${todo.get('text')}`,
+                  text: todo.get('alarmMessage') || `Hello, this is a reminder for your task: ${todo.get('text')}`,
+                });
+                console.log(`[CRON] Email successfully sent to ${user.email} from server account`);
+              } else if (user.gmailAppPassword) {
+                // Fallback: Use the user's own account
+                const transporter = nodemailer.createTransport({
+                  service: 'gmail',
+                  auth: { user: user.email, pass: user.gmailAppPassword },
+                });
+                await transporter.sendMail({
+                  from: `"Todo App Notifications" <${user.email}>`,
+                  to: user.email,
+                  subject: `Todo Alarm: ${todo.get('text')}`,
+                  text: todo.get('alarmMessage') || `Hello, this is a reminder for your task: ${todo.get('text')}`,
+                });
+                console.log(`[CRON] Email successfully sent to ${user.email}`);
+              }
             } catch (err) {
               console.error(`[CRON] Failed to send email to ${user.email}:`, err.message);
             }

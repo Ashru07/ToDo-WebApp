@@ -8,8 +8,10 @@ export function useAuth() {
 }
 
 
-// Use the live Render backend URL for both web and Android
-export const API_URL = 'https://todo-webapp-ixo4.onrender.com/api';
+// Use the live Render backend URL for production, local server for development
+export const API_URL = import.meta.env.DEV 
+  ? `http://${window.location.hostname}:3001/api`
+  : 'https://todo-webapp-ixo4.onrender.com/api';
 
 
 export function AuthProvider({ children }) {
@@ -25,11 +27,11 @@ export function AuthProvider({ children }) {
     setLoading(false);
   }, []);
 
-  const register = async (email, password, name, gmailAppPassword) => {
+  const register = async (email, password, name) => {
     const res = await fetch(`${API_URL}/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, name, gmailAppPassword })
+      body: JSON.stringify({ email, password, name })
     });
     
     const data = await res.json();

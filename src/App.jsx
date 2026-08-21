@@ -4,12 +4,14 @@ import { useAuth } from './contexts/AuthContext';
 import { App as CapacitorApp } from '@capacitor/app';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { Capacitor } from '@capacitor/core';
+import { LocalNotifications } from '@capacitor/local-notifications';
 import Login from './components/Auth/Login';
 import Register from './components/Auth/Register';
 import Dashboard from './components/Dashboard/Dashboard';
 import Profile from './components/Profile/Profile';
 import AssignTask from './components/Tasks/AssignTask';
 import Statistics from './components/Statistics/Statistics';
+import AlarmScreen from './components/AlarmScreen';
 
 function ProtectedRoute({ children }) {
   const { currentUser } = useAuth();
@@ -36,6 +38,40 @@ function App() {
       StatusBar.setOverlaysWebView({ overlay: true }).catch(console.error);
       StatusBar.setStyle({ style: Style.Light }).catch(console.error);
       StatusBar.setBackgroundColor({ color: '#F4F7FB' }).catch(console.error); // Very light slate blue matching the top gradient
+
+      // Create a high-priority channel so notifications pop up on the screen and over the lock screen
+      LocalNotifications.createChannel({
+        id: 'todo-alarms',
+        name: 'Todo Alarms',
+        description: 'High priority alarms for tasks',
+        importance: 5,
+        visibility: 1, // 1 = PUBLIC (shows fully on lock screen)
+        vibration: true
+      }).catch(console.error);
+
+      // Register notification actions (Stop button)
+      LocalNotifications.registerActionTypes({
+        types: [
+          {
+            id: 'ALARM_ACTIONS',
+            actions: [
+              {
+                id: 'stop',
+                title: 'Stop Alarm',
+                destructive: true
+              }
+            ]
+          }
+        ]
+      }).catch(console.error);
+
+      // Listen for the Stop action being clicked
+      LocalNotifications.addListener('localNotificationActionPerformed', (notificationAction) => {
+        if (notificationAction.actionId === 'stop') {
+          // Clear the notification when stop is clicked
+          LocalNotifications.cancel({ notifications: [{ id: notificationAction.notification.id }] }).catch(console.error);
+        }
+      });
     }
   }, []);
 
@@ -59,8 +95,27 @@ function App() {
 
     const listener = CapacitorApp.addListener('backButton', handleBackButton);
 
+    // Check if app was cold-booted by an alarm
+    CapacitorApp.getLaunchUrl().then(data => {
+      if (data && data.url && data.url.includes('todoapp://alarm')) {
+        const url = new URL(data.url);
+        const message = url.searchParams.get('message') || 'Time to check your tasks';
+        navigateRef.current('/alarm-screen', { state: { message } });
+      }
+    });
+
+    // Listen for Alarm triggered from native Android while app is already running in background
+    const urlListener = CapacitorApp.addListener('appUrlOpen', data => {
+      if (data.url.includes('todoapp://alarm')) {
+        const url = new URL(data.url);
+        const message = url.searchParams.get('message') || 'Time to check your tasks';
+        navigateRef.current('/alarm-screen', { state: { message } });
+      }
+    });
+
     return () => {
       listener.then(l => l.remove());
+      urlListener.then(l => l.remove());
     };
   }, []);
 
@@ -109,6 +164,10 @@ function App() {
             <Statistics />
           </ProtectedRoute>
         } 
+      />
+      <Route 
+        path="/alarm-screen" 
+        element={<AlarmScreen />} 
       />
     </Routes>
   );

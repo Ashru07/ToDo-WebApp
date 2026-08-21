@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
-import { Plus, Check, Trash2, Edit2, Search, Filter, Clock, Flag, Tag, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Bell, AlertTriangle, BarChart2 } from 'lucide-react'
+import { Plus, Check, Trash2, Edit2, Search, Filter, Clock, Flag, Tag, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Bell, AlertTriangle, BarChart2, Layers } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth, API_URL } from '../../contexts/AuthContext'
 import { format, addDays, subDays, isSameDay, parseISO, startOfDay, isBefore, addMinutes, formatDistanceToNow } from 'date-fns'
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, registerPlugin } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { messaging } from '../../firebase'
 import { getToken } from 'firebase/messaging'
@@ -14,6 +14,7 @@ const PRIORITIES = ['low', 'medium', 'high']
 const CATEGORIES = ['personal', 'work', 'shopping', 'health', 'learning', 'other']
 
 function Dashboard() {
+  const AlarmPlugin = registerPlugin('AlarmPlugin');
   const { currentUser } = useAuth()
   const navigate = useNavigate()
 
@@ -28,7 +29,7 @@ function Dashboard() {
           setTodos(data);
           const hasDue = data.some(todo => {
             if (todo.completed || !todo.time) return false;
-            const todoDate = todo.dueDate ? parseISO(todo.dueDate) : parseISO(todo.createdAt);
+            const todoDate = todo.dueDate ? parseISO(todo.dueDate) : (todo.createdAt ? new Date(todo.createdAt) : new Date());
             if (!isSameDay(todoDate, new Date())) return false;
             const today = startOfDay(new Date());
             const dateOfTodo = startOfDay(todoDate);
@@ -67,7 +68,7 @@ function Dashboard() {
           const checkTimeString = `${checkHours}:${checkMinutes}`;
 
           if (todo.time === checkTimeString) {
-            const todoDate = todo.dueDate ? parseISO(todo.dueDate) : parseISO(todo.createdAt);
+            const todoDate = todo.dueDate ? parseISO(todo.dueDate) : (todo.createdAt ? new Date(todo.createdAt) : new Date());
             if (isSameDay(todoDate, now)) {
               if (!todo.alarmTriggered) {
                 triggerAlarm(todo);
@@ -196,7 +197,7 @@ function Dashboard() {
       setTodos(todos.filter(todo => todo.id !== id))
 
       if (Capacitor.isNativePlatform()) {
-        await LocalNotifications.cancel({ notifications: [{ id: id % 2147483647 }] }).catch(console.error);
+        // no cancel needed for AlarmPlugin
       }
     } catch (e) {
       console.error('Failed to delete task', e)
@@ -224,7 +225,7 @@ function Dashboard() {
       setTodos(todos.map(todo => todo.id === id ? updatedTodo : todo))
 
       if (Capacitor.isNativePlatform()) {
-        await LocalNotifications.cancel({ notifications: [{ id: id % 2147483647 }] }).catch(console.error);
+        // no cancel needed for AlarmPlugin
         if (updatedTodo.hasAlarm && updatedTodo.time && !updatedTodo.alarmTriggered && !updatedTodo.completed) {
           const [hours, minutes] = updatedTodo.time.split(':').map(Number);
           const alarmDate = updatedTodo.dueDate ? parseISO(updatedTodo.dueDate) : new Date();
@@ -232,14 +233,7 @@ function Dashboard() {
           const triggerDate = new Date(alarmDate.getTime() - (updatedTodo.alarmOffset || 0) * 60000);
 
           if (triggerDate > new Date()) {
-            await LocalNotifications.schedule({
-              notifications: [{
-                title: 'Todo Alarm!',
-                body: updatedTodo.alarmMessage || `Reminder: ${updatedTodo.text}`,
-                id: updatedTodo.id % 2147483647,
-                schedule: { at: triggerDate }
-              }]
-            });
+            await AlarmPlugin.setAlarm({ time: triggerDate.getTime(), message: updatedTodo.alarmMessage || `Reminder: ${updatedTodo.text}` }).catch(e => console.error('[NativeAlarm]', e));
           }
         }
       }
@@ -253,7 +247,7 @@ function Dashboard() {
 
   const overdueTodos = todos.filter(todo => {
     if (todo.completed) return false;
-    const todoDate = todo.dueDate ? parseISO(todo.dueDate) : parseISO(todo.createdAt);
+    const todoDate = todo.dueDate ? parseISO(todo.dueDate) : (todo.createdAt ? new Date(todo.createdAt) : new Date());
     const today = startOfDay(new Date());
     const dateOfTodo = startOfDay(todoDate);
 
@@ -275,7 +269,7 @@ function Dashboard() {
 
   const isTimePassed = (todo) => {
     if (!todo.time) return false;
-    const todoDate = todo.dueDate ? parseISO(todo.dueDate) : parseISO(todo.createdAt);
+    const todoDate = todo.dueDate ? parseISO(todo.dueDate) : (todo.createdAt ? new Date(todo.createdAt) : new Date());
     const today = startOfDay(new Date());
     const dateOfTodo = startOfDay(todoDate);
 
@@ -292,7 +286,7 @@ function Dashboard() {
   const getRemainingTimeText = (todo) => {
     if (todo.completed) return null;
 
-    const todoDate = todo.dueDate ? parseISO(todo.dueDate) : parseISO(todo.createdAt);
+    const todoDate = todo.dueDate ? parseISO(todo.dueDate) : (todo.createdAt ? new Date(todo.createdAt) : new Date());
     let targetDate = startOfDay(todoDate);
 
     if (todo.time) {
@@ -310,7 +304,7 @@ function Dashboard() {
   };
 
   const filteredTodos = (showOverdue ? overdueTodos : todos).filter(todo => {
-    const todoDate = todo.dueDate ? parseISO(todo.dueDate) : parseISO(todo.createdAt);
+    const todoDate = todo.dueDate ? parseISO(todo.dueDate) : (todo.createdAt ? new Date(todo.createdAt) : new Date());
 
     if (!showOverdue && !isSameDay(todoDate, selectedDate)) return false;
 
@@ -327,7 +321,7 @@ function Dashboard() {
   });
 
   const statsTodos = (showOverdue ? overdueTodos : todos).filter(todo => {
-    const todoDate = todo.dueDate ? parseISO(todo.dueDate) : parseISO(todo.createdAt);
+    const todoDate = todo.dueDate ? parseISO(todo.dueDate) : (todo.createdAt ? new Date(todo.createdAt) : new Date());
     return isSameDay(todoDate, selectedDate);
   });
 
@@ -373,14 +367,25 @@ function Dashboard() {
 
   return (
     <div className="min-h-screen p-3 md:p-8 transition-colors duration-300" style={{ paddingTop: 'max(env(safe-area-inset-top), 0.75rem)' }}>
+      <svg width="0" height="0" className="absolute">
+        <defs>
+          <linearGradient id="todo-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop stopColor="#2563eb" offset="0%" />
+            <stop stopColor="#4f46e5" offset="100%" />
+          </linearGradient>
+        </defs>
+      </svg>
       <div className="max-w-7xl mx-auto overflow-hidden">
         {/* Header */}
         <header className="mb-4 animate-fade-in mt-2">
           <div className="flex justify-between items-stretch mb-4 gap-4">
             <div className="flex flex-col justify-center">
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent leading-none">
-                To Do
-              </h1>
+              <div className="flex items-center gap-2">
+                <Layers className="w-8 h-8" style={{ stroke: "url(#todo-gradient)" }} />
+                <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent leading-none">
+                  To Do
+                </h1>
+              </div>
               <p className="text-slate-600 dark:text-slate-400 leading-none mt-1">
                 Welcome back, {currentUser.name}
               </p>
@@ -471,7 +476,7 @@ function Dashboard() {
               {/* Search & Filter */}
               <div className="flex flex-col gap-4 mb-6">
                 <div className="relative w-full">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2" style={{ stroke: "url(#todo-gradient)" }} size={18} />
                   <input
                     type="text"
                     value={searchQuery}
