@@ -303,8 +303,8 @@ setInterval(async () => {
 // Serve frontend static files
 app.use(express.static(path.join(__dirname, 'dist')));
 
-// Catch-all route for React client-side routing
-app.get('*', (req, res) => {
+// Catch-all route for React client-side routing (Express 5 compatible)
+app.get(/.*/, (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
