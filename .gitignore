@@ -2,7 +2,7 @@
 node_modules/
 
 # Ignore build output
-dist/
+# dist/ (Removed so it can be pushed to Render)
 
 # Ignore cache and logs
 .cache/

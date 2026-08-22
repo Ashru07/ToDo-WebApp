@@ -3,6 +3,11 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import admin from 'firebase-admin';
 import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 import { parseISO, isSameDay, addMinutes } from 'date-fns';
 import mongoose from 'mongoose';
@@ -294,6 +299,14 @@ setInterval(async () => {
     console.error('[CRON] Error processing alarms:', err.message);
   }
 }, 30000); // Check every 30 seconds
+
+// Serve frontend static files
+app.use(express.static(path.join(__dirname, 'dist')));
+
+// Catch-all route for React client-side routing
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+});
 
 app.listen(port, '0.0.0.0', () => {
   console.log(`Server listening on port ${port}`);
