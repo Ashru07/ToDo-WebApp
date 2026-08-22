@@ -30,15 +30,29 @@ public class AlarmReceiver extends BroadcastReceiver {
             message = intent.getStringExtra("message");
         }
         
+        String ringtone = "bell";
+        if (intent.hasExtra("ringtone")) {
+            ringtone = intent.getStringExtra("ringtone");
+        }
+        
+        String todoId = "";
+        if (intent.hasExtra("todoId")) {
+            todoId = intent.getStringExtra("todoId");
+        }
+        
         // 2. Prepare Intent for MainActivity
         Intent launchIntent = new Intent(context, MainActivity.class);
         launchIntent.setAction(Intent.ACTION_VIEW);
-        launchIntent.setData(android.net.Uri.parse("todoapp://alarm?message=" + android.net.Uri.encode(message)));
+        launchIntent.setData(android.net.Uri.parse("todoapp://alarm?message=" + android.net.Uri.encode(message) + "&ringtone=" + android.net.Uri.encode(ringtone) + "&todoId=" + android.net.Uri.encode(todoId)));
         launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         
-        // 3. Fallback: Full-Screen Intent Notification with Native Sound
+        // 3. Fallback: Full-Screen Intent Notification
         NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        String channelId = "todo_alarm_channel_high";
+        String channelId = "todo_alarm_channel_silent";
+        
+        if ("custom".equals(ringtone)) {
+            channelId = "todo_alarm_channel_sound";
+        }
         
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
@@ -46,11 +60,13 @@ public class AlarmReceiver extends BroadcastReceiver {
                 "High Priority Alarms",
                 NotificationManager.IMPORTANCE_HIGH
             );
-            channel.setSound(android.provider.Settings.System.DEFAULT_ALARM_ALERT_URI, 
-                             new android.media.AudioAttributes.Builder()
-                                 .setUsage(android.media.AudioAttributes.USAGE_ALARM)
-                                 .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                                 .build());
+            if ("todo_alarm_channel_silent".equals(channelId)) {
+                channel.setSound(null, null);
+            } else {
+                // Use default alarm sound
+                channel.setSound(android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_ALARM), 
+                  new android.media.AudioAttributes.Builder().setUsage(android.media.AudioAttributes.USAGE_ALARM).build());
+            }
             channel.setBypassDnd(true);
             notificationManager.createNotificationChannel(channel);
         }
@@ -67,9 +83,14 @@ public class AlarmReceiver extends BroadcastReceiver {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setFullScreenIntent(pendingIntent, true) // TRUE forces it to wake screen if OS allows
-            .setSound(android.provider.Settings.System.DEFAULT_ALARM_ALERT_URI)
             .setAutoCancel(true)
             .setTimeoutAfter(60000);
+            
+        if ("todo_alarm_channel_silent".equals(channelId)) {
+            builder.setSound(null);
+        } else {
+            builder.setSound(android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_ALARM));
+        }
 
         notificationManager.notify(999, builder.build());
 

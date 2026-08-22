@@ -197,30 +197,54 @@ app.post('/api/alarms/trigger', async (req, res) => {
 
     // Send email if configured
     if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-      // Use the dedicated server email account
       const transporter = nodemailer.createTransport({
         service: 'gmail',
         auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
       });
-      await transporter.sendMail({
+      const mailOptions = {
         from: `"Todo App Notifications" <${process.env.EMAIL_USER}>`,
         to: user.email,
         subject: `Todo Alarm: ${todo.get('text')}`,
-        text: todo.get('alarmMessage') || `Hello, this is a reminder for your task: ${todo.get('text')}`,
-      });
+        html: `
+          <div style="font-family: Arial, sans-serif; text-align: center; padding: 20px; border: 1px solid #eee; border-radius: 10px; max-width: 500px; margin: auto; background-color: #fafafa;">
+            <img src="cid:todo_logo" alt="Todo App Logo" style="width: 100px; height: 100px; border-radius: 20px; margin-bottom: 20px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);" />
+            <h2 style="color: #4f46e5;">Todo Alarm!</h2>
+            <p style="font-size: 18px; color: #555;">${todo.get('alarmMessage') || `Hello, this is a reminder for your task:`}</p>
+            <h3 style="color: #111827;">${todo.get('text')}</h3>
+          </div>
+        `,
+        attachments: [{
+          filename: 'logo.jpg',
+          path: './public/logo.jpg',
+          cid: 'todo_logo'
+        }]
+      };
+      await transporter.sendMail(mailOptions);
       console.log(`[API] Email successfully sent to ${user.email} from server account for task: ${todo.get('text')}`);
     } else if (user.gmailAppPassword) {
-      // Fallback: Use the user's own account (will likely go to Sent folder)
       const transporter = nodemailer.createTransport({
         service: 'gmail',
         auth: { user: user.email, pass: user.gmailAppPassword },
       });
-      await transporter.sendMail({
+      const mailOptions = {
         from: `"Todo App Notifications" <${user.email}>`,
         to: user.email,
         subject: `Todo Alarm: ${todo.get('text')}`,
-        text: todo.get('alarmMessage') || `Hello, this is a reminder for your task: ${todo.get('text')}`,
-      });
+        html: `
+          <div style="font-family: Arial, sans-serif; text-align: center; padding: 20px; border: 1px solid #eee; border-radius: 10px; max-width: 500px; margin: auto; background-color: #fafafa;">
+            <img src="cid:todo_logo" alt="Todo App Logo" style="width: 100px; height: 100px; border-radius: 20px; margin-bottom: 20px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);" />
+            <h2 style="color: #4f46e5;">Todo Alarm!</h2>
+            <p style="font-size: 18px; color: #555;">${todo.get('alarmMessage') || `Hello, this is a reminder for your task:`}</p>
+            <h3 style="color: #111827;">${todo.get('text')}</h3>
+          </div>
+        `,
+        attachments: [{
+          filename: 'logo.jpg',
+          path: './public/logo.jpg',
+          cid: 'todo_logo'
+        }]
+      };
+      await transporter.sendMail(mailOptions);
       console.log(`[API] Email successfully sent to ${user.email} for task: ${todo.get('text')}`);
     }
     res.json({ success: true });
@@ -271,30 +295,54 @@ setInterval(async () => {
             
             try {
               if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-                // Use the dedicated server email account
                 const transporter = nodemailer.createTransport({
                   service: 'gmail',
                   auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
                 });
-                await transporter.sendMail({
+                const mailOptions = {
                   from: `"Todo App Notifications" <${process.env.EMAIL_USER}>`,
                   to: user.email,
                   subject: `Todo Alarm: ${todo.get('text')}`,
-                  text: todo.get('alarmMessage') || `Hello, this is a reminder for your task: ${todo.get('text')}`,
-                });
+                  html: `
+                    <div style="font-family: Arial, sans-serif; text-align: center; padding: 20px; border: 1px solid #eee; border-radius: 10px; max-width: 500px; margin: auto; background-color: #fafafa;">
+                      <img src="cid:todo_logo" alt="Todo App Logo" style="width: 100px; height: 100px; border-radius: 20px; margin-bottom: 20px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);" />
+                      <h2 style="color: #4f46e5;">Todo Alarm!</h2>
+                      <p style="font-size: 18px; color: #555;">${todo.get('alarmMessage') || `Hello, this is a reminder for your task:`}</p>
+                      <h3 style="color: #111827;">${todo.get('text')}</h3>
+                    </div>
+                  `,
+                  attachments: [{
+                    filename: 'logo.jpg',
+                    path: './public/logo.jpg',
+                    cid: 'todo_logo'
+                  }]
+                };
+                await transporter.sendMail(mailOptions);
                 console.log(`[CRON] Email successfully sent to ${user.email} from server account`);
               } else if (user.gmailAppPassword) {
-                // Fallback: Use the user's own account
                 const transporter = nodemailer.createTransport({
                   service: 'gmail',
                   auth: { user: user.email, pass: user.gmailAppPassword },
                 });
-                await transporter.sendMail({
+                const mailOptions = {
                   from: `"Todo App Notifications" <${user.email}>`,
                   to: user.email,
                   subject: `Todo Alarm: ${todo.get('text')}`,
-                  text: todo.get('alarmMessage') || `Hello, this is a reminder for your task: ${todo.get('text')}`,
-                });
+                  html: `
+                    <div style="font-family: Arial, sans-serif; text-align: center; padding: 20px; border: 1px solid #eee; border-radius: 10px; max-width: 500px; margin: auto; background-color: #fafafa;">
+                      <img src="cid:todo_logo" alt="Todo App Logo" style="width: 100px; height: 100px; border-radius: 20px; margin-bottom: 20px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);" />
+                      <h2 style="color: #4f46e5;">Todo Alarm!</h2>
+                      <p style="font-size: 18px; color: #555;">${todo.get('alarmMessage') || `Hello, this is a reminder for your task:`}</p>
+                      <h3 style="color: #111827;">${todo.get('text')}</h3>
+                    </div>
+                  `,
+                  attachments: [{
+                    filename: 'logo.jpg',
+                    path: './public/logo.jpg',
+                    cid: 'todo_logo'
+                  }]
+                };
+                await transporter.sendMail(mailOptions);
                 console.log(`[CRON] Email successfully sent to ${user.email}`);
               }
             } catch (err) {

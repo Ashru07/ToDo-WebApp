@@ -22,6 +22,7 @@ public class AlarmPlugin extends Plugin {
     public void setAlarm(PluginCall call) {
         Long time = call.getLong("time");
         String message = call.getString("message", "Alarm");
+        String ringtone = call.getString("ringtone", "bell");
 
         if (time == null) {
             call.reject("Must provide time in ms");
@@ -31,9 +32,13 @@ public class AlarmPlugin extends Plugin {
         try {
             Context context = getContext();
             AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+            
+            String todoId = call.getString("todoId", "");
 
-            Intent intent = new Intent(context, AlarmReceiver.class);
+            Intent intent = new Intent(getContext(), AlarmReceiver.class);
             intent.putExtra("message", message);
+            intent.putExtra("ringtone", ringtone);
+            intent.putExtra("todoId", todoId);
             
             // Generate a unique ID for the pending intent
             int requestCode = (int) (time % Integer.MAX_VALUE);

@@ -100,16 +100,19 @@ function App() {
       if (data && data.url && data.url.includes('todoapp://alarm')) {
         const url = new URL(data.url);
         const message = url.searchParams.get('message') || 'Time to check your tasks';
-        navigateRef.current('/alarm-screen', { state: { message } });
+        const ringtone = url.searchParams.get('ringtone') || 'bell';
+        const todoId = url.searchParams.get('todoId');
+        navigateRef.current('/alarm-screen', { state: { message, ringtone, todoId } });
       }
     });
 
-    // Listen for Alarm triggered from native Android while app is already running in background
     const urlListener = CapacitorApp.addListener('appUrlOpen', data => {
-      if (data.url.includes('todoapp://alarm')) {
+      if (data && data.url && data.url.includes('todoapp://alarm')) {
         const url = new URL(data.url);
         const message = url.searchParams.get('message') || 'Time to check your tasks';
-        navigateRef.current('/alarm-screen', { state: { message } });
+        const ringtone = url.searchParams.get('ringtone') || 'bell';
+        const todoId = url.searchParams.get('todoId');
+        navigateRef.current('/alarm-screen', { state: { message, ringtone, todoId } });
       }
     });
 

@@ -88,84 +88,31 @@ function Dashboard() {
         body: todo.alarmMessage || `Time for: ${todo.text}`,
         icon: '/favicon.ico'
       });
-    } else {
-      alert(`ALARM: ${todo.alarmMessage || todo.text}`);
     }
 
-    try {
-      const currentRingtone = todo.ringtone || 'bell';
-      if (currentRingtone === 'custom' && todo.customRingtone) {
-        const audio = new Audio(todo.customRingtone);
-        audio.play().catch(e => console.log('Audio play error:', e));
-        const timeoutId = setTimeout(() => {
-          audio.pause();
-          audio.currentTime = 0;
-          setActiveAlarm(null);
-        }, 20000);
+    const currentRingtone = todo.ringtone || 'bell';
+    
+    // Navigate to full screen alarm instead of showing pop-up
+    navigate('/alarm-screen', { 
+      state: { 
+        message: todo.alarmMessage || `Reminder: ${todo.text}`, 
+        ringtone: currentRingtone,
+        customRingtone: todo.customRingtone,
+        todoId: todo.id
+      } 
+    });
 
-        setActiveAlarm({
-          todo,
-          stop: () => {
-            audio.pause();
-            audio.currentTime = 0;
-            clearTimeout(timeoutId);
-            setActiveAlarm(null);
-          }
-        });
-      } else {
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const oscillator = audioCtx.createOscillator();
-        const type = currentRingtone === 'chime' ? 'sine' : currentRingtone === 'digital' ? 'square' : 'triangle';
-        oscillator.type = type;
-        oscillator.frequency.setValueAtTime(440, audioCtx.currentTime);
-
-        const gainNode = audioCtx.createGain();
-        oscillator.connect(gainNode);
-        gainNode.connect(audioCtx.destination);
-
-        for (let i = 0; i < 40; i++) {
-          gainNode.gain.setValueAtTime(1, audioCtx.currentTime + i * 0.5);
-          gainNode.gain.setValueAtTime(0, audioCtx.currentTime + i * 0.5 + 0.25);
-        }
-
-        oscillator.start();
-        const timeoutId = setTimeout(() => {
-          try { oscillator.stop(); } catch (e) { }
-          setActiveAlarm(null);
-        }, 20000);
-
-        setActiveAlarm({
-          todo,
-          stop: () => {
-            try { oscillator.stop(); } catch (e) { }
-            clearTimeout(timeoutId);
-            setActiveAlarm(null);
-          }
-        });
-      }
-    } catch (e) {
-      console.log('Audio playback failed', e);
-    }
-
-    if (todo.fcmToken) {
-      fetch(`${API_URL}/push`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          token: todo.fcmToken,
-          title: 'Todo Alarm!',
-          body: todo.alarmMessage || `Hello, this is a reminder for your task: ${todo.text}`,
-        }),
-      }).catch(err => console.error('Error connecting to alarm server:', err));
-    }
+    fetch(`${API_URL}/alarms/trigger`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: currentUser.id,
+        todoId: todo.id,
+      }),
+    }).catch(err => console.error('Error connecting to alarm server:', err));
 
     const updatedTodo = { ...todo, alarmTriggered: true };
     setTodos(todos.map(t => t.id === todo.id ? updatedTodo : t));
-    fetch(`${API_URL}/todos/${todo.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: currentUser.id, todo: updatedTodo })
-    }).catch(console.error);
   };
 
   const toggleTodo = async (id) => {
@@ -233,7 +180,12 @@ function Dashboard() {
           const triggerDate = new Date(alarmDate.getTime() - (updatedTodo.alarmOffset || 0) * 60000);
 
           if (triggerDate > new Date()) {
-            await AlarmPlugin.setAlarm({ time: triggerDate.getTime(), message: updatedTodo.alarmMessage || `Reminder: ${updatedTodo.text}` }).catch(e => console.error('[NativeAlarm]', e));
+            await AlarmPlugin.setAlarm({ 
+              time: triggerDate.getTime(), 
+              message: updatedTodo.alarmMessage || `Reminder: ${updatedTodo.text}`,
+              ringtone: updatedTodo.ringtone || 'bell',
+              todoId: updatedTodo.id.toString()
+            }).catch(e => console.error('[NativeAlarm]', e));
           }
         }
       }
@@ -557,27 +509,6 @@ function Dashboard() {
         </div>
       </div>
 
-      {/* Active Alarm Banner */}
-      {activeAlarm && (
-        <div className="fixed bottom-6 right-6 bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-2xl border-l-4 border-red-500 z-50 animate-bounce w-80 max-w-[calc(100vw-3rem)]">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-full text-red-500">
-              <Bell size={24} className="animate-pulse" />
-            </div>
-            <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100">Alarm Ringing!</h3>
-          </div>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 ml-1">
-            {activeAlarm.todo.text}
-          </p>
-          <button
-            onClick={() => activeAlarm.stop()}
-            className="w-full bg-red-500 hover:bg-red-600 text-white font-medium py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2"
-          >
-            <AlertTriangle size={18} />
-            Stop Alarm
-          </button>
-        </div>
-      )}
 
       <TaskDetailsModal
         isOpen={!!selectedTask}
